@@ -11,13 +11,7 @@ export default function LearnPage() {
   const { user, loading, logout } = useAuth()
   const router = useRouter()
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push("/auth")
-    }
-  }, [user, loading, router])
-
-  if (loading) {
+  if (loading || !user) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -26,10 +20,6 @@ export default function LearnPage() {
         </div>
       </div>
     )
-  }
-
-  if (!user) {
-    return null
   }
 
   return (
@@ -64,7 +54,10 @@ export default function LearnPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={logout}
+              onClick={async () => {
+                await logout()
+                router.push("/auth")
+              }}
               className="text-gray-300 hover:text-white hover:bg-gray-700 transition-all duration-200 cursor-pointer"
             >
               <LogOut className="mr-2 h-4 w-4" />

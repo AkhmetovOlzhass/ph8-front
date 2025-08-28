@@ -52,7 +52,7 @@ function getAuthHeaders() {
 
 export const contentAPI = {
   // Topics
-  async createTopic(data: { title: string; slug: string }) {
+  async createTopic(data: { title: string;}) {
     const response = await fetch(`${API_BASE_URL}/api/v1/content/topics`, {
       method: "POST",
       headers: getAuthHeaders(),
@@ -60,6 +60,25 @@ export const contentAPI = {
     })
     if (!response.ok) throw new Error("Failed to create topic")
     return response.json()
+  },
+
+  async updateTopic(id: string, data: {title: string}){
+    const response = await fetch(`${API_BASE_URL}/api/v1/content/topics/${id}`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    })
+    if (!response.ok) throw new Error("Failed to update topic")
+    return response.json()
+  },
+
+  async deleteTopic(id: string){
+    const response = await fetch(`${API_BASE_URL}/api/v1/content/topics/${id}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    })
+    if (!response.ok) throw new Error("Failed to delete topic")
+    return true
   },
 
   async getAllTopics(): Promise<Topic[]> {

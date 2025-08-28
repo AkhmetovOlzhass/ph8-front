@@ -6,10 +6,6 @@ import { useEffect } from "react"
 export default function HomePage() {
   const router = useRouter()
 
-  useEffect(() => {
-    router.push("/auth")
-  }, [router])
-
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
       <div className="text-center space-y-4">

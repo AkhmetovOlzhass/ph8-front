@@ -1,25 +1,30 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Plus } from "lucide-react"
+import { Plus, Edit, Trash } from "lucide-react"
 import { contentAPI, type Topic } from "@/lib/api"
 
 export function TopicsSection() {
   const [topics, setTopics] = useState<Topic[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Create
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [title, setTitle] = useState("")
-  const [slug, setSlug] = useState("")
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState("")
+
+  // Edit
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [editTitle, setEditTitle] = useState("")
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null)
+  const [updating, setUpdating] = useState(false)
 
   useEffect(() => {
     loadTopics()
@@ -41,9 +46,8 @@ export function TopicsSection() {
     setCreating(true)
     setError("")
     try {
-      await contentAPI.createTopic({ title, slug })
+      await contentAPI.createTopic({ title })
       setTitle("")
-      setSlug("")
       setIsCreateOpen(false)
       loadTopics()
     } catch (error) {
@@ -53,17 +57,52 @@ export function TopicsSection() {
     }
   }
 
+  const handleEditClick = (topic: Topic) => {
+    setSelectedTopic(topic)
+    setEditTitle(topic.title)
+    setIsEditOpen(true)
+  }
+
+  const handleUpdateTopic = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedTopic) return
+    setUpdating(true)
+    try {
+      await contentAPI.updateTopic(selectedTopic.id, { title: editTitle })
+      setIsEditOpen(false)
+      setSelectedTopic(null)
+      loadTopics()
+    } catch (error) {
+      setError("Failed to update topic")
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleDeleteTopic = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this topic?")) return
+    try {
+      await contentAPI.deleteTopic(id)
+      loadTopics()
+    } catch (error) {
+      setError("Failed to delete topic")
+    }
+  }
+
   if (loading) {
     return <div className="p-6 text-gray-300">Loading topics...</div>
   }
 
   return (
     <div className="p-6 bg-gray-950 min-h-screen">
+      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Topics</h1>
           <p className="text-gray-400">Manage physics learning topics</p>
         </div>
+
+        {/* Create Topic */}
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button className="bg-orange-600 hover:bg-orange-700 text-white">
@@ -82,27 +121,12 @@ export function TopicsSection() {
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="title" className="text-gray-300">
-                  Title
-                </Label>
+                <Label htmlFor="title" className="text-gray-300">Title</Label>
                 <Input
                   id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Enter topic title"
-                  required
-                  className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description" className="text-gray-300">
-                  Description
-                </Label>
-                <Textarea
-                  id="description"
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
-                  placeholder="Enter topic description"
                   required
                   className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
                 />
@@ -115,6 +139,7 @@ export function TopicsSection() {
         </Dialog>
       </div>
 
+      {/* Topics grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {topics.map((topic) => (
           <Card key={topic.id} className="bg-gray-900 border-gray-700 hover:bg-gray-800 transition-colors">
@@ -122,12 +147,45 @@ export function TopicsSection() {
               <CardTitle className="text-lg text-white">{topic.title}</CardTitle>
               <CardDescription className="text-gray-400">{topic.description}</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex justify-between items-center">
               <p className="text-sm text-gray-500">Created: {new Date(topic.createdAt).toLocaleDateString()}</p>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => handleEditClick(topic)} className="text-gray-300 hover:text-white">
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => handleDeleteTopic(topic.id)} className="text-red-400 hover:text-red-600">
+                  <Trash className="h-4 w-4" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="bg-gray-900 border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">Edit Topic</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdateTopic} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="editTitle" className="text-gray-300">Title</Label>
+              <Input
+                id="editTitle"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="Enter topic title"
+                required
+                className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
+              />
+            </div>
+            <Button type="submit" disabled={updating} className="w-full bg-orange-600 hover:bg-orange-700 text-white">
+              {updating ? "Updating..." : "Update Topic"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {topics.length === 0 && (
         <div className="text-center py-12">

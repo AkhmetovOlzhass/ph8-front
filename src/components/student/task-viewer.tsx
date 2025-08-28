@@ -145,7 +145,7 @@ export function TaskViewer({ taskId, onBack }: TaskViewerProps) {
                 <div className="space-y-4">
                   <CardTitle className="text-3xl font-bold text-white text-balance">{task.title}</CardTitle>
                   <CardDescription className="text-lg text-slate-300 leading-relaxed text-balance">
-                    {task.description}
+                    {task.bodyMd}
                   </CardDescription>
 
                   <div className="flex items-center gap-6 text-sm text-slate-400 pt-2">
@@ -198,7 +198,6 @@ export function TaskViewer({ taskId, onBack }: TaskViewerProps) {
                 <CardContent>
                   <div className="space-y-3">
                     <h4 className="font-semibold text-white">{topic.title}</h4>
-                    <p className="text-slate-400 text-sm leading-relaxed">{topic.description}</p>
                   </div>
                 </CardContent>
               </Card>
