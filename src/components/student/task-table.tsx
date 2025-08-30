@@ -35,8 +35,7 @@ export function TaskTable({ tasks, topics, onViewTask, userSolutions = [] }: Tas
 
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch =
-      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      task.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+      task.title.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesDifficulty = selectedDifficulty === "all" || task.difficulty === selectedDifficulty
     const matchesTopic = selectedTopic === "all" || task.topicId === selectedTopic
 
@@ -46,6 +45,20 @@ export function TaskTable({ tasks, topics, onViewTask, userSolutions = [] }: Tas
   const getTopicTitle = (topicId: string) => {
     return topics.find((topic) => topic.id === topicId)?.title || "Unknown"
   }
+
+  const classMap: Record<string, string> = {
+  SEVEN: "7",
+  EIGHT: "8",
+  NINE: "9",
+  TEN: "10",
+  ELEVEN: "11",
+}
+
+  const getTopicClass = (topicId: string) => {
+    const schoolClass = topics.find((topic) => topic.id === topicId)?.schoolClass
+    return schoolClass ? classMap[schoolClass] : "Unknown"
+  }
+
 
   const isTaskSolved = (taskId: string) => {
     return userSolutions.includes(taskId)
@@ -126,8 +139,11 @@ export function TaskTable({ tasks, topics, onViewTask, userSolutions = [] }: Tas
                 Title
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-28 hidden sm:table-cell">
-                Acceptance
+                Class
               </th>
+              {/* <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-28 hidden sm:table-cell">
+                Acceptance
+              </th> */}
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-28">
                 Difficulty
               </th>
@@ -160,27 +176,14 @@ export function TaskTable({ tasks, topics, onViewTask, userSolutions = [] }: Tas
                     <div className="text-sm font-semibold text-white group-hover:text-orange-400 transition-colors duration-200 text-balance">
                       {index + 1}. {task.title}
                     </div>
-                    {task.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {task.tags.slice(0, 3).map((tag) => (
-                          <span
-                            key={tag}
-                            className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-gray-700/50 text-gray-300 border border-gray-600 hover:bg-gray-600/50 transition-colors duration-200"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                        {task.tags.length > 3 && (
-                          <span className="text-xs text-gray-400 self-center">+{task.tags.length - 3}</span>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </td>
-
-                <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-400 hidden sm:table-cell font-medium">
-                  {getAcceptanceRate(task.id)}
+                <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-400 hidden md:table-cell font-medium">
+                  {getTopicClass(task.topicId)}
                 </td>
+                {/* <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-400 hidden sm:table-cell font-medium">
+                  {getAcceptanceRate(task.id)}
+                </td> */}
 
                 <td className="px-6 py-5 whitespace-nowrap">
                   <Badge

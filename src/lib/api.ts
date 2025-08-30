@@ -8,6 +8,7 @@ export interface Topic {
   parentId?: string
   createdAt: string
   updatedAt: string
+  schoolClass: string
 }
 
 export interface Task {
@@ -18,7 +19,9 @@ export interface Task {
   bodyMd: string
   difficulty: "EASY" | "MEDIUM" | "HARD" | "EXTREME"
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED"
-  tags: string[]
+  officialSolution: string
+  correctAnswer: string
+  answerType: "TEXT" | "NUMBER" | "FORMULA"
   topicId: string
   authorId: string
   createdAt: string
@@ -42,6 +45,54 @@ export interface Solution {
   updatedAt: string
 }
 
+export async function refreshAccessToken() {
+  const refreshToken = localStorage.getItem("refresh_token");
+  if (!refreshToken) throw new Error("No refresh token");
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  if (!response.ok) throw new Error("Failed to refresh token");
+
+  const data = await response.json();
+  localStorage.setItem("access_token", data.accessToken);
+  return data.accessToken;
+}
+
+export async function apiFetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
+  let token = localStorage.getItem("access_token");
+
+  let headers = {
+    ...(init?.headers || {}),
+    "Content-Type": "application/json",
+    ...(token && { Authorization: `Bearer ${token}` }),
+  };
+
+  let response = await fetch(input, { ...init, headers });
+
+  if (response.status === 401) {
+    try {
+      token = await refreshAccessToken();
+      headers = {
+        ...(init?.headers || {}),
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+      response = await fetch(input, { ...init, headers });
+    } catch (e) {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      throw new Error("Session expired, please login again");
+    }
+  }
+
+  return response;
+}
+
+
 function getAuthHeaders() {
   const token = localStorage.getItem("access_token")
   return {
@@ -52,18 +103,19 @@ function getAuthHeaders() {
 
 export const contentAPI = {
   // Topics
-  async createTopic(data: { title: string;}) {
-    const response = await fetch(`${API_BASE_URL}/api/v1/content/topics`, {
+  async createTopic(data: { title: string; schoolClass: string }) {
+    const response = await apiFetch(`${API_BASE_URL}/api/v1/content/topics`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
-    })
-    if (!response.ok) throw new Error("Failed to create topic")
-    return response.json()
+    });
+
+    if (!response.ok) throw new Error("Failed to create topic");
+    return response.json();
   },
 
-  async updateTopic(id: string, data: {title: string}){
-    const response = await fetch(`${API_BASE_URL}/api/v1/content/topics/${id}`, {
+  async updateTopic(id: string, data: {title: string, schoolClass: string}){
+    const response = await apiFetch(`${API_BASE_URL}/api/v1/content/topics/${id}`, {
       method: "PUT",
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -73,7 +125,7 @@ export const contentAPI = {
   },
 
   async deleteTopic(id: string){
-    const response = await fetch(`${API_BASE_URL}/api/v1/content/topics/${id}`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/v1/content/topics/${id}`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     })
@@ -82,21 +134,28 @@ export const contentAPI = {
   },
 
   async getAllTopics(): Promise<Topic[]> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/content/topics`)
+    const response = await apiFetch(`${API_BASE_URL}/api/v1/content/topics`)
     if (!response.ok) throw new Error("Failed to fetch topics")
       
     return response.json()
   },
 
   async getTopicById(id: string): Promise<Topic> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/content/topics/${id}`)
+    const response = await apiFetch(`${API_BASE_URL}/api/v1/content/topics/${id}`)
     if (!response.ok) throw new Error("Failed to fetch topic")
     return response.json()
   },
 
   // Tasks
-  async createTask(data: { title: string; bodyMd: string; difficulty: string; topicId: string }) {
-    const response = await fetch(`${API_BASE_URL}/api/v1/content/tasks`, {
+  async getAllTasks(): Promise<Task[]> {    
+    const response = await apiFetch(`${API_BASE_URL}/api/v1/content/tasks`)
+    if (!response.ok) throw new Error("Failed to fetch topics")
+      
+    return response.json()
+  },
+
+  async createTask(data: { title: string; bodyMd: string; difficulty: string; topicId: string, officialSolution: string, correctAnswer: string, answerType: string }) {
+    const response = await apiFetch(`${API_BASE_URL}/api/v1/content/tasks`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -105,8 +164,27 @@ export const contentAPI = {
     return response.json()
   },
 
+  async updateTask(id: string, data: { title: string; bodyMd: string; difficulty: string; topicId: string }) {
+    const response = await apiFetch(`${API_BASE_URL}/api/v1/content/tasks/${id}`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    })
+    if (!response.ok) throw new Error("Failed to create task")
+    return response.json()
+  },
+
+  async deleteTask(id: string) {
+    const response = await apiFetch(`${API_BASE_URL}/api/v1/content/tasks/${id}`, {
+      method: "DELETE",
+      headers: getAuthHeaders()
+    })
+    if (!response.ok) throw new Error("Failed to create task")
+    return response.json()
+  },
+
   async publishTask(taskId: string) {
-    const response = await fetch(`${API_BASE_URL}/api/v1/content/tasks/publish`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/v1/content/tasks/publish`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify({ taskId }),
@@ -116,7 +194,7 @@ export const contentAPI = {
   },
 
   async getDraftTasks(): Promise<Task[]> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/content/tasks/drafts`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/v1/content/tasks/drafts`, {
       headers: getAuthHeaders(),
     })
     if (!response.ok) throw new Error("Failed to fetch draft tasks")
@@ -124,21 +202,40 @@ export const contentAPI = {
   },
 
   async getTask(id: string): Promise<Task> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/content/tasks/${id}`)
+    const response = await apiFetch(`${API_BASE_URL}/api/v1/content/tasks/${id}`)
     if (!response.ok) throw new Error("Failed to fetch task")
     return response.json()
   },
 
+  async submitAnswer(taskId: string, answer: string) {
+    const response = await fetch(`${API_BASE_URL}/api/v1/content/tasks/${taskId}/submit`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ answer }),
+    })
+
+    if (!response.ok) throw new Error("Failed to submit answer")
+    return response.json()
+  },
+
   async getTasksByTopic(topicId: string): Promise<Task[]> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/content/topics/${topicId}/tasks`)
+    const response = await apiFetch(`${API_BASE_URL}/api/v1/content/topics/${topicId}/tasks`)
     if (!response.ok) throw new Error("Failed to fetch tasks")
     return response.json()
   },
+
+  async getUserProgress() {
+    const response = await apiFetch(`${API_BASE_URL}/api/v1/content/tasks/progress`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error("Failed to fetch user progress");
+    return response.json();
+  }
 }
 
 export const usersAPI = {
   async getAllUsers(): Promise<User[]> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/users`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/v1/users`, {
       headers: getAuthHeaders(),
     })
     if (!response.ok) throw new Error("Failed to fetch users")

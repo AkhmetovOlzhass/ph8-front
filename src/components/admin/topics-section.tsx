@@ -16,6 +16,8 @@ export function TopicsSection() {
 
   // Create
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [schoolClass, setSchoolClass] = useState("TEN")
+  const [editSchoolClass, setEditSchoolClass] = useState("TEN")
   const [title, setTitle] = useState("")
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState("")
@@ -46,7 +48,7 @@ export function TopicsSection() {
     setCreating(true)
     setError("")
     try {
-      await contentAPI.createTopic({ title })
+      await contentAPI.createTopic({ title, schoolClass })
       setTitle("")
       setIsCreateOpen(false)
       loadTopics()
@@ -60,6 +62,7 @@ export function TopicsSection() {
   const handleEditClick = (topic: Topic) => {
     setSelectedTopic(topic)
     setEditTitle(topic.title)
+    setEditSchoolClass(topic.schoolClass)
     setIsEditOpen(true)
   }
 
@@ -68,7 +71,7 @@ export function TopicsSection() {
     if (!selectedTopic) return
     setUpdating(true)
     try {
-      await contentAPI.updateTopic(selectedTopic.id, { title: editTitle })
+      await contentAPI.updateTopic(selectedTopic.id, { title: editTitle, schoolClass: editSchoolClass })
       setIsEditOpen(false)
       setSelectedTopic(null)
       loadTopics()
@@ -131,6 +134,21 @@ export function TopicsSection() {
                   className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
                 />
               </div>
+              <div className="space-y-2">
+  <Label htmlFor="schoolClass" className="text-gray-300">Class</Label>
+  <select
+    id="schoolClass"
+    value={schoolClass}
+    onChange={(e) => setSchoolClass(e.target.value)}
+    className="w-full rounded-md bg-gray-800 border border-gray-600 text-white px-3 py-2"
+  >
+    <option value="SEVEN">7 класс</option>
+    <option value="EIGHT">8 класс</option>
+    <option value="NINE">9 класс</option>
+    <option value="TEN">10 класс</option>
+    <option value="ELEVEN">11 класс</option>
+  </select>
+</div>
               <Button type="submit" disabled={creating} className="w-full bg-orange-600 hover:bg-orange-700 text-white">
                 {creating ? "Creating..." : "Create Topic"}
               </Button>
@@ -146,6 +164,9 @@ export function TopicsSection() {
             <CardHeader>
               <CardTitle className="text-lg text-white">{topic.title}</CardTitle>
               <CardDescription className="text-gray-400">{topic.description}</CardDescription>
+              <CardDescription className="text-gray-400">
+                {topic.schoolClass ? `Class: ${topic.schoolClass}` : "No class"}
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex justify-between items-center">
               <p className="text-sm text-gray-500">Created: {new Date(topic.createdAt).toLocaleDateString()}</p>
@@ -179,6 +200,21 @@ export function TopicsSection() {
                 required
                 className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editSchoolClass" className="text-gray-300">Class</Label>
+              <select
+                id="editSchoolClass"
+                value={editSchoolClass}
+                onChange={(e) => setEditSchoolClass(e.target.value)}
+                className="w-full rounded-md bg-gray-800 border border-gray-600 text-white px-3 py-2"
+              >
+                <option value="SEVEN">7 класс</option>
+                <option value="EIGHT">8 класс</option>
+                <option value="NINE">9 класс</option>
+                <option value="TEN">10 класс</option>
+                <option value="ELEVEN">11 класс</option>
+              </select>
             </div>
             <Button type="submit" disabled={updating} className="w-full bg-orange-600 hover:bg-orange-700 text-white">
               {updating ? "Updating..." : "Update Topic"}

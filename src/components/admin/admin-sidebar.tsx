@@ -23,7 +23,12 @@ const sidebarItems = [
   },
   {
     id: "tasks",
-    label: "Tasks",
+    label: "Draft Tasks",
+    icon: FileText,
+  },
+  {
+    id: "tasks_all",
+    label: "All Tasks",
     icon: FileText,
   },
   {

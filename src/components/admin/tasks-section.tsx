@@ -1,18 +1,16 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { Plus, Eye } from "lucide-react"
+import { Plus } from "lucide-react"
 import { contentAPI, type Task, type Topic } from "@/lib/api"
+import { TaskCard } from "@/components/admin/task-card"
 
 export function TasksSection() {
   const [tasks, setTasks] = useState<Task[]>([])
@@ -23,6 +21,9 @@ export function TasksSection() {
   const [bodyMd, setBodyMd] = useState("")
   const [difficulty, setDifficulty] = useState("")
   const [selectedTopicId, setSelectedTopicId] = useState("")
+  const [officialSolution, setOfficialSolution] = useState("")
+  const [correctAnswer, setCorrectAnswer] = useState("")
+  const [answerType, setAnswerType] = useState("")
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState("")
 
@@ -32,7 +33,10 @@ export function TasksSection() {
 
   const loadData = async () => {
     try {
-      const [tasksData, topicsData] = await Promise.all([contentAPI.getDraftTasks(), contentAPI.getAllTopics()])
+      const [tasksData, topicsData] = await Promise.all([
+        contentAPI.getDraftTasks(),
+        contentAPI.getAllTopics(),
+      ])
       setTasks(tasksData)
       setTopics(topicsData)
     } catch (error) {
@@ -52,11 +56,17 @@ export function TasksSection() {
         bodyMd,
         difficulty: difficulty as "EASY" | "MEDIUM" | "HARD" | "EXTREME",
         topicId: selectedTopicId,
+        officialSolution,
+        correctAnswer,
+        answerType: answerType as "TEXT" | "NUMBER" | "FORMULA"
       })
       setTitle("")
       setBodyMd("")
       setDifficulty("")
       setSelectedTopicId("")
+      setOfficialSolution("")
+      setCorrectAnswer("")
+      setAnswerType("")
       setIsCreateOpen(false)
       loadData()
     } catch (error) {
@@ -75,9 +85,17 @@ export function TasksSection() {
     }
   }
 
-  if (loading) {
-    return <div className="p-6 text-gray-300">Loading tasks...</div>
+  const handleDeleteTask = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this task?")) return
+    try {
+      await contentAPI.deleteTask(id)
+      loadData()
+    } catch (error) {
+      setError("Failed to delete task")
+    }
   }
+
+  if (loading) return <div className="p-6 text-gray-300">Loading tasks...</div>
 
   return (
     <div className="p-6 bg-gray-950 min-h-screen">
@@ -170,6 +188,54 @@ export function TasksSection() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="task-solution" className="text-gray-300">
+                  Solution (Markdown)
+                </Label>
+                <Textarea
+                  id="task-solution"
+                  value={officialSolution}
+                  onChange={(e) => setOfficialSolution(e.target.value)}
+                  placeholder="Enter task solution in Markdown format"
+                  required
+                  className="min-h-32 bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="task-answer" className="text-gray-300">
+                  Answer
+                </Label>
+                <Input
+                  id="task-answer"
+                  value={correctAnswer}
+                  onChange={(e) => setCorrectAnswer(e.target.value)}
+                  placeholder="Enter answer"
+                  required
+                  className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="answerType" className="text-gray-300">
+                  Answer type
+                </Label>
+                <Select value={answerType} onValueChange={setAnswerType} required>
+                  <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                    <SelectValue placeholder="Select answer type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-800 border-gray-600">
+                    <SelectItem value="TEXT" className="text-green-400 hover:bg-gray-700">
+                      Text
+                    </SelectItem>
+                    <SelectItem value="NUMBER" className="text-green-400 hover:bg-gray-700">
+                      Number
+                    </SelectItem>
+                    <SelectItem value="FORMULA" className="text-green-400 hover:bg-gray-700">
+                      Formula
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <Button type="submit" disabled={creating} className="w-full bg-orange-600 hover:bg-orange-700 text-white">
                 {creating ? "Creating..." : "Create Task"}
               </Button>
@@ -180,49 +246,17 @@ export function TasksSection() {
 
       <div className="grid gap-4 md:grid-cols-2">
         {tasks.map((task) => (
-          <Card key={task.id} className="bg-gray-900 border-gray-700 hover:bg-gray-800 transition-colors">
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg text-white">{task.title}</CardTitle>
-                  <CardDescription className="text-gray-400">{task.description}</CardDescription>
-                </div>
-                <Badge
-                  variant={task.status === "PUBLISHED" ? "default" : "secondary"}
-                  className={task.status === "PUBLISHED" ? "bg-green-600 text-white" : "bg-gray-600 text-gray-300"}
-                >
-                  {task.status}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <p className="text-sm text-gray-400">
-                  Topic: {topics.find((t) => t.id === task.topicId)?.title || "Unknown"}
-                </p>
-                <p className="text-sm text-gray-400">Created: {new Date(task.createdAt).toLocaleDateString()}</p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-gray-600 text-gray-300 hover:bg-gray-700 bg-transparent"
-                  >
-                    <Eye className="mr-2 h-4 w-4" />
-                    View
-                  </Button>
-                  {task.status === "DRAFT" && (
-                    <Button
-                      size="sm"
-                      onClick={() => handlePublishTask(task.id)}
-                      className="bg-orange-600 hover:bg-orange-700 text-white"
-                    >
-                      Publish
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <TaskCard
+            key={task.id}
+            task={task}
+            topics={topics}
+            onDelete={handleDeleteTask}
+            onPublish={handlePublishTask}
+            onUpdate={async (id, data) => {
+              await contentAPI.updateTask(id, data)
+              loadData()
+            }}
+          />
         ))}
       </div>
 

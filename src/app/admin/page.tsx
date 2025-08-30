@@ -9,6 +9,7 @@ import { TopicsSection } from "@/components/admin/topics-section"
 import { TasksSection } from "@/components/admin/tasks-section"
 import { UsersSection } from "@/components/admin/users-section"
 import { Button } from "@/components/ui/button"
+import { AllTasksSection } from "@/components/admin/all-tasks-section"
 
 export default function AdminPage() {
   const { user, loading, logout } = useAuth()
@@ -41,6 +42,8 @@ export default function AdminPage() {
         return <TopicsSection />
       case "tasks":
         return <TasksSection />
+      case "tasks_all":
+        return <AllTasksSection />
       case "users":
         return <UsersSection />
       default:

@@ -31,29 +31,45 @@ export function StudentDashboard() {
       const [topicsData] = await Promise.all([contentAPI.getAllTopics()])
       setTopics(topicsData)
 
-      // Load all published tasks from all topics
       const allTasks: Task[] = []
       for (const topic of topicsData) {
         try {
           const topicTasks = await contentAPI.getTasksByTopic(topic.id)
-          // Only show published tasks to students
           const publishedTasks = topicTasks.filter((task) => task.status === "PUBLISHED")
           allTasks.push(...publishedTasks)
         } catch (error) {
-          // Continue loading other topics even if one fails
         }
       }
+
+      const difficultyOrder: Record<string, number> = {
+        EASY: 1,
+        MEDIUM: 2,
+        HARD: 3,
+        EXTREME: 4,
+      }
+
+      allTasks.sort((a, b) => {
+        const diffComp = difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty]
+        if (diffComp !== 0) return diffComp
+
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      })
+
       setTasks(allTasks)
 
-      // Mock some solved tasks for demo
-      const mockSolvedTasks = allTasks.slice(0, Math.floor(allTasks.length * 0.3)).map((task) => task.id)
-      setUserSolutions(mockSolvedTasks)
+      const progress = await contentAPI.getUserProgress();
+      const solvedTaskIds = progress
+        .filter((p: any) => p.status === "SOLVED")
+        .map((p: any) => p.taskId);
+
+      setUserSolutions(solvedTaskIds);
     } catch (error) {
       console.error("Failed to load data:", error)
     } finally {
       setLoading(false)
     }
   }
+
 
   const filterTasks = () => {
     let filtered = tasks
@@ -70,8 +86,7 @@ export function StudentDashboard() {
         (task) =>
           task.title.toLowerCase().includes(query) ||
           task.description.toLowerCase().includes(query) ||
-          task.content.toLowerCase().includes(query) ||
-          task.tags.some((tag) => tag.toLowerCase().includes(query)),
+          task.content.toLowerCase().includes(query)
       )
     }
 
