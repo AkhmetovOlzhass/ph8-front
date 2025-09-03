@@ -15,8 +15,12 @@ export function StudentDashboard() {
   const [searchQuery, setSearchQuery] = useState("")
   const [viewingTaskId, setViewingTaskId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [userSolutions, setUserSolutions] = useState<string[]>([]) // Mock solved tasks
+  const [userSolutions, setUserSolutions] = useState<string[]>([])
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const handleSolved = (taskId: string) => {
+    setUserSolutions(prev => (prev.includes(taskId) ? prev : [...prev, taskId]))
+  }
 
   useEffect(() => {
     loadData()
@@ -102,7 +106,7 @@ export function StudentDashboard() {
   }
 
   if (viewingTaskId) {
-    return <TaskViewer taskId={viewingTaskId} onBack={handleBackToTasks} />
+    return <TaskViewer taskId={viewingTaskId} onBack={handleBackToTasks} onSolved={handleSolved} />
   }
 
   if (loading) {

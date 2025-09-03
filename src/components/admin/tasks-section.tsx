@@ -26,6 +26,7 @@ export function TasksSection() {
   const [answerType, setAnswerType] = useState("")
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState("")
+  const [image, setImage] = useState<File | null>(null);
 
   useEffect(() => {
     loadData()
@@ -58,7 +59,8 @@ export function TasksSection() {
         topicId: selectedTopicId,
         officialSolution,
         correctAnswer,
-        answerType: answerType as "TEXT" | "NUMBER" | "FORMULA"
+        answerType: answerType as "TEXT" | "NUMBER" | "FORMULA",
+        image
       })
       setTitle("")
       setBodyMd("")
@@ -68,6 +70,7 @@ export function TasksSection() {
       setCorrectAnswer("")
       setAnswerType("")
       setIsCreateOpen(false)
+      setImage(null)
       loadData()
     } catch (error) {
       setError("Failed to create task")
@@ -145,6 +148,18 @@ export function TasksSection() {
                   placeholder="Enter task description in Markdown format"
                   required
                   className="min-h-32 bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="task-image" className="text-gray-300">
+                  Image (optional)
+                </Label>
+                <Input
+                  id="task-image"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setImage(e.target.files?.[0] || null)}
+                  className="bg-gray-800 border-gray-600 text-white"
                 />
               </div>
               <div className="space-y-2">

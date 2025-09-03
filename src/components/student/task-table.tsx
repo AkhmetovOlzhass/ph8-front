@@ -17,6 +17,7 @@ export function TaskTable({ tasks, topics, onViewTask, userSolutions = [] }: Tas
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("all")
   const [selectedTopic, setSelectedTopic] = useState<string>("all")
+  const [classSort, setClassSort] = useState<"none" | "asc" | "desc">("asc") // ← селект сортировки
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -34,11 +35,9 @@ export function TaskTable({ tasks, topics, onViewTask, userSolutions = [] }: Tas
   }
 
   const filteredTasks = tasks.filter((task) => {
-    const matchesSearch =
-      task.title.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesDifficulty = selectedDifficulty === "all" || task.difficulty === selectedDifficulty
     const matchesTopic = selectedTopic === "all" || task.topicId === selectedTopic
-
     return matchesSearch && matchesDifficulty && matchesTopic
   })
 
@@ -47,26 +46,39 @@ export function TaskTable({ tasks, topics, onViewTask, userSolutions = [] }: Tas
   }
 
   const classMap: Record<string, string> = {
-  SEVEN: "7",
-  EIGHT: "8",
-  NINE: "9",
-  TEN: "10",
-  ELEVEN: "11",
-}
+    SEVEN: "7",
+    EIGHT: "8",
+    NINE: "9",
+    TEN: "10",
+    ELEVEN: "11",
+  }
 
   const getTopicClass = (topicId: string) => {
     const schoolClass = topics.find((topic) => topic.id === topicId)?.schoolClass
     return schoolClass ? classMap[schoolClass] : "Unknown"
   }
 
+  const getClassNumber = (topicId: string) => {
+    const c = parseInt(getTopicClass(topicId), 10)
+    return Number.isNaN(c) ? 999 : c
+  }
 
   const isTaskSolved = (taskId: string) => {
     return userSolutions.includes(taskId)
   }
 
+  // Сортируем уже отфильтрованные задачи по выбранному направлению классов
+  const tasksToRender =
+    classSort === "none"
+      ? filteredTasks
+      : [...filteredTasks].sort((a, b) => {
+          const ca = getClassNumber(a.topicId)
+          const cb = getClassNumber(b.topicId)
+          return classSort === "asc" ? ca - cb : cb - ca
+        })
+
   // Calculate acceptance rate (mock data for now)
   const getAcceptanceRate = (taskId: string) => {
-    // In real app, this would come from actual solution statistics
     const rates = ["45.2%", "52.1%", "38.7%", "61.3%", "29.4%", "71.8%"]
     return rates[taskId.length % rates.length]
   }
@@ -123,6 +135,22 @@ export function TaskTable({ tasks, topics, onViewTask, userSolutions = [] }: Tas
                 </option>
               ))}
             </select>
+
+            {/* ▼ Новый селект сортировки по классам */}
+            <select
+              value={classSort}
+              onChange={(e) => setClassSort(e.target.value as "none" | "asc" | "desc")}
+              className="px-4 py-2 bg-gray-800/80 border border-gray-600 rounded-lg text-sm text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all duration-200 hover:bg-gray-700/80 hover:border-gray-500 cursor-pointer appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOCIgdmlld0JveD0iMCAwIDEyIDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0xIDFMNiA2TDExIDEiIHN0cm9rZT0iIzlDQTNBRiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+')] bg-no-repeat bg-[right_12px_center] pr-10"
+              title="Class Sort"
+              aria-label="Sort by class"
+            >
+              <option value="asc" className="bg-gray-800 text-white">
+                Class ↑ (7→11)
+              </option>
+              <option value="desc" className="bg-gray-800 text-white">
+                Class ↓ (11→7)
+              </option>
+            </select>
           </div>
         </div>
       </div>
@@ -153,7 +181,7 @@ export function TaskTable({ tasks, topics, onViewTask, userSolutions = [] }: Tas
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
-            {filteredTasks.map((task, index) => (
+            {tasksToRender.map((task, index) => (
               <tr
                 key={task.id}
                 className="hover:bg-gray-700/30 cursor-pointer transition-all duration-200 group hover:shadow-lg hover:shadow-orange-500/5"
@@ -202,7 +230,7 @@ export function TaskTable({ tasks, topics, onViewTask, userSolutions = [] }: Tas
         </table>
       </div>
 
-      {filteredTasks.length === 0 && (
+      {tasksToRender.length === 0 && (
         <div className="text-center py-16">
           <div className="text-gray-400 text-sm">No problems found matching your criteria.</div>
           <div className="text-gray-500 text-xs mt-2">Try adjusting your search or filters.</div>

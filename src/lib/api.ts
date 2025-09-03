@@ -26,6 +26,7 @@ export interface Task {
   authorId: string
   createdAt: string
   updatedAt: string
+  imageUrl: string
 }
 
 export interface User {
@@ -154,14 +155,41 @@ export const contentAPI = {
     return response.json()
   },
 
-  async createTask(data: { title: string; bodyMd: string; difficulty: string; topicId: string, officialSolution: string, correctAnswer: string, answerType: string }) {
-    const response = await apiFetch(`${API_BASE_URL}/api/v1/content/tasks`, {
+  async createTask(data: {
+    title: string;
+    bodyMd: string;
+    difficulty: string;
+    topicId: string;
+    officialSolution: string;
+    correctAnswer: string;
+    answerType: string;
+    image?: File | null;
+  }) {
+    const formData = new FormData();
+    formData.append("title", data.title);
+    formData.append("bodyMd", data.bodyMd);
+    formData.append("difficulty", data.difficulty);
+    formData.append("topicId", data.topicId);
+    formData.append("officialSolution", data.officialSolution);
+    formData.append("correctAnswer", data.correctAnswer);
+    formData.append("answerType", data.answerType);
+  
+    if (data.image) {
+      formData.append("image", data.image); // 👈 файл
+    }
+  
+    const token = localStorage.getItem("access_token");
+  
+    const response = await fetch(`${API_BASE_URL}/api/v1/content/tasks`, {
       method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-    })
-    if (!response.ok) throw new Error("Failed to create task")
-    return response.json()
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+  
+    if (!response.ok) throw new Error("Failed to create task");
+    return response.json();
   },
 
   async updateTask(id: string, data: { title: string; bodyMd: string; difficulty: string; topicId: string }) {

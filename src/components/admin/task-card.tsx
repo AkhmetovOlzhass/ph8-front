@@ -12,20 +12,23 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Task, Topic } from "@/lib/api"
 
+interface UpdatePayload {
+  title: string
+  bodyMd: string
+  difficulty: "EASY" | "MEDIUM" | "HARD" | "EXTREME"
+  topicId: string
+  officialSolution: string
+  correctAnswer: string
+  answerType: "TEXT" | "NUMBER" | "FORMULA"
+}
+
 interface TaskCardProps {
   task: Task
   topics: Topic[]
   onDelete?: (id: string) => void
   onPublish?: (id: string) => void
-  onUpdate?: (id: string, data: {
-    title: string
-    bodyMd: string
-    difficulty: "EASY" | "MEDIUM" | "HARD" | "EXTREME"
-    topicId: string
-    officialSolution: string
-    correctAnswer: string
-    answerType: "TEXT" | "NUMBER" | "FORMULA"
-  }) => void
+  /** image — опциональный файл, как и при создании */
+  onUpdate?: (id: string, data: UpdatePayload, image?: File | null) => void
 }
 
 export function TaskCard({ task, topics, onDelete, onPublish, onUpdate }: TaskCardProps) {
@@ -40,20 +43,29 @@ export function TaskCard({ task, topics, onDelete, onPublish, onUpdate }: TaskCa
   const [correctAnswer, setCorrectAnswer] = useState(task.correctAnswer || "")
   const [answerType, setAnswerType] = useState<string>(task.answerType || "TEXT")
 
+  // 🖼️ новое: файл картинки (опционально)
+  const [image, setImage] = useState<File | null>(null)
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (onUpdate) {
-      onUpdate(task.id, {
-        title,
-        bodyMd,
-        difficulty: difficulty as "EASY" | "MEDIUM" | "HARD" | "EXTREME",
-        topicId,
-        officialSolution,
-        correctAnswer,
-        answerType: answerType as "TEXT" | "NUMBER" | "FORMULA"
-      })
+      onUpdate(
+        task.id,
+        {
+          title,
+          bodyMd,
+          difficulty: difficulty as "EASY" | "MEDIUM" | "HARD" | "EXTREME",
+          topicId,
+          officialSolution,
+          correctAnswer,
+          answerType: answerType as "TEXT" | "NUMBER" | "FORMULA",
+        },
+        image, // 👈 передаём файл наверх (может быть null)
+      )
     }
     setIsEditOpen(false)
+    // по желанию можно очистить выбранный файл
+    // setImage(null)
   }
 
   return (
@@ -136,6 +148,7 @@ export function TaskCard({ task, topics, onDelete, onPublish, onUpdate }: TaskCa
                 required
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="bodyMd" className="text-gray-300">Description (Markdown)</Label>
               <Textarea
@@ -146,6 +159,7 @@ export function TaskCard({ task, topics, onDelete, onPublish, onUpdate }: TaskCa
                 required
               />
             </div>
+
             <div className="space-y-2">
               <Label className="text-gray-300">Topic</Label>
               <Select value={topicId} onValueChange={setTopicId} required>
@@ -161,6 +175,7 @@ export function TaskCard({ task, topics, onDelete, onPublish, onUpdate }: TaskCa
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-2">
               <Label className="text-gray-300">Difficulty</Label>
               <Select value={difficulty} onValueChange={setDifficulty} required>
@@ -215,6 +230,28 @@ export function TaskCard({ task, topics, onDelete, onPublish, onUpdate }: TaskCa
                   <SelectItem value="FORMULA" className="text-green-400 hover:bg-gray-700">Formula</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* 🖼️ Image (optional) */}
+            <div className="space-y-2">
+              <Label htmlFor="task-image" className="text-gray-300">Image (optional)</Label>
+              <Input
+                id="task-image"
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImage(e.target.files?.[0] || null)}
+                className="bg-gray-800 border-gray-600 text-white"
+              />
+              {/* превью: новая картинка или текущая из задачи */}
+              {(image || task.imageUrl) && (
+                <div className="mt-2">
+                  <img
+                    src={image ? URL.createObjectURL(image) : (task.imageUrl as string)}
+                    alt="Preview"
+                    className="max-h-48 rounded-md border border-gray-700"
+                  />
+                </div>
+              )}
             </div>
 
             <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-700 text-white">

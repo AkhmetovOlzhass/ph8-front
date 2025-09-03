@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +12,7 @@ import { Input } from "../ui/input"
 interface TaskViewerProps {
   taskId: string
   onBack: () => void
+  onSolved?: (taskId: string) => void
 }
 
 interface UserTaskProgress {
@@ -20,7 +21,126 @@ interface UserTaskProgress {
   attempts: number
 }
 
-export function TaskViewer({ taskId, onBack }: TaskViewerProps) {
+/** Один залп фейерверка — без «точки ожидания» */
+function FireworkBurst({
+  x,
+  y,
+  delay = 0,
+  pieces = 46,
+  radius = 260,
+}: {
+  x: number
+  y: number
+  delay?: number
+  pieces?: number
+  radius?: number
+}) {
+  const COLORS = ["#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#eab308"]
+
+  return (
+    <div
+      className="absolute"
+      style={{ left: `${x}%`, top: `${y}%`, transform: "translate(-50%, -50%)" }}
+    >
+      {/* ударная волна: тоже из «пустоты» */}
+      <motion.div
+        className="absolute rounded-full border-2 border-white/25"
+        style={{ width: 8, height: 8, left: -4, top: -4 }}
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 6, opacity: [0, 0.35, 0] }}
+        transition={{ duration: 0.9, ease: "easeOut", delay }}
+      />
+
+      {/* частицы: сначала невидимы в центре, появляются уже на пути */}
+      {Array.from({ length: pieces }).map((_, i) => {
+        const angle = (i / pieces) * Math.PI * 2
+        const dist = radius + Math.random() * 120
+        const size = 10 + Math.random() * 10
+        const color = COLORS[i % COLORS.length]
+        const pieceDelay = delay + Math.random() * 0.12
+
+        // трёхточечная траектория, чтобы появлялись не в центре
+        const xKeyframes = [0, Math.cos(angle) * dist * 0.25, Math.cos(angle) * dist]
+        const yKeyframes = [0, Math.sin(angle) * dist * 0.25, Math.sin(angle) * dist + dist * 0.08]
+
+        return (
+          <motion.span
+            key={i}
+            className="absolute rounded-full"
+            style={{ width: size, height: size, backgroundColor: color, left: 0, top: 0 }}
+            initial={{ x: 0, y: 0, scale: 0.6, opacity: 0, rotate: 0 }}
+            animate={{
+              x: xKeyframes,
+              y: yKeyframes,
+              scale: [0.6, 1, 1],
+              opacity: [0, 1, 0], // появление «в воздухе»
+              rotate: (Math.random() > 0.5 ? 1 : -1) * (180 + Math.random() * 180),
+            }}
+            transition={{
+              duration: 1.05,
+              ease: "easeOut",
+              delay: pieceDelay,
+              times: [0, 0.15, 1], // 15% пути — момент «материализации»
+            }}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+/** Оверлей с серией залпов по всему экрану */
+function FireworksOverlay({
+  active,
+  onDone,
+}: {
+  active: boolean
+  onDone: () => void
+}) {
+  const bursts = useMemo(() => {
+    if (!active) return []
+    const count = 10 + Math.floor(Math.random() * 6) // 10–15 залпов
+    return Array.from({ length: count }).map((_, i) => {
+      const margin = 8
+      return {
+        x: margin + Math.random() * (100 - margin * 2),
+        y: margin + Math.random() * (100 - margin * 2),
+        delay: i * (0.09 + Math.random() * 0.12),
+        radius: 220 + Math.random() * 180,
+        pieces: 42 + Math.floor(Math.random() * 20),
+      }
+    })
+  }, [active])
+
+  useEffect(() => {
+    if (!active || bursts.length === 0) return
+    const maxDelay = Math.max(...bursts.map((b) => b.delay))
+    const total = maxDelay + 1300
+    const t = setTimeout(onDone, total)
+    return () => clearTimeout(t)
+  }, [active, bursts, onDone])
+
+  return (
+    <AnimatePresence>
+      {active && (
+        <motion.div
+          key="fw-overlay"
+          className="fixed inset-0 z-40 pointer-events-none"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+        >
+          {bursts.map((b, idx) => (
+            <FireworkBurst key={idx} {...b} />
+          ))}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
+export function TaskViewer({ taskId, onBack, onSolved }: TaskViewerProps) {
   const [task, setTask] = useState<Task | null>(null)
   const [topic, setTopic] = useState<Topic | null>(null)
   const [loading, setLoading] = useState(true)
@@ -33,6 +153,9 @@ export function TaskViewer({ taskId, onBack }: TaskViewerProps) {
   const [submitting, setSubmitting] = useState(false)
 
   const [progress, setProgress] = useState<UserTaskProgress | null>(null)
+
+  // 🎆 глобальный фейерверк
+  const [celebrate, setCelebrate] = useState(false)
 
   useEffect(() => {
     loadTask()
@@ -71,10 +194,11 @@ export function TaskViewer({ taskId, onBack }: TaskViewerProps) {
         attempts: res.progress.attempts,
       })
 
-      setResult(res.correct
-        ? "✅ Correct answer!" 
-        : "❌ Wrong answer, try again."
-      )
+      if (res.correct) {
+        onSolved?.(task.id)
+        setCelebrate(false)
+        requestAnimationFrame(() => setCelebrate(true))
+      }
     } catch (err) {
       console.error("Failed to submit answer", err)
       setResult("⚠️ Failed to submit your answer.")
@@ -131,6 +255,8 @@ export function TaskViewer({ taskId, onBack }: TaskViewerProps) {
 
   return (
     <div className="min-h-screen bg-slate-950">
+      <FireworksOverlay active={celebrate} onDone={() => setCelebrate(false)} />
+
       <div className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Button
@@ -158,14 +284,29 @@ export function TaskViewer({ taskId, onBack }: TaskViewerProps) {
                 <CardTitle className="text-3xl font-bold text-white flex items-center gap-3">
                   {task.title}
                   {progress?.status === "SOLVED" && (
-                    <div className="w-6 h-6 bg-gradient-to-r from-green-500 to-green-400 rounded-full flex items-center justify-center shadow-lg shadow-green-500/25 group-hover:scale-110 transition-transform duration-200">
+                    <motion.div
+                      className="w-6 h-6 bg-gradient-to-r from-green-500 to-green-400 rounded-full flex items-center justify-center shadow-lg shadow-green-500/25"
+                      animate={celebrate ? { scale: [1, 1.4, 1], rotate: [0, -16, 0] } : {}}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                    >
                       <Check className="w-3.5 h-3.5 text-white" />
-                    </div>
+                    </motion.div>
                   )}
                 </CardTitle>
+
                 <CardDescription className="text-lg text-slate-300 whitespace-pre-wrap leading-relaxed">
                   {task.bodyMd}
                 </CardDescription>
+
+                {task.imageUrl && (
+                  <div className="mt-4">
+                    <img
+                      src={task.imageUrl}
+                      alt="Task illustration"
+                      className="max-h-96 rounded-lg border border-slate-700 shadow-md mx-auto"
+                    />
+                  </div>
+                )}
 
                 {progress?.lastAnswer && (
                   <div className="mt-3 text-sm text-slate-400">
