@@ -5,7 +5,7 @@ import { createContext, useContext } from "react"
 export interface User {
   id: string
   email: string
-  name: string
+  displayName: string
   role: "ADMIN" | "USER"
 }
 
@@ -32,7 +32,7 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost
 
 export const authAPI = {
   async login(email: string, password: string) {
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -49,12 +49,12 @@ export const authAPI = {
   },
 
   async register(email: string, password: string, name: string) {
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({ email, password, displayName: name }),
     })
 
     if (!response.ok) {
@@ -65,7 +65,7 @@ export const authAPI = {
   },
 
   async refresh(refreshToken: string) {
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+    const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken }),
@@ -77,7 +77,8 @@ export const authAPI = {
 
   async getProfile(token: string) {
     
-    const response = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
+    const response = await fetch(`${API_BASE_URL}/api/user/profile`, {
+      method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
       },

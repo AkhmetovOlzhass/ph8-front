@@ -78,11 +78,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const register = async (email: string, password: string, name: string) => {
     setLoading(true)
     try {
-      const tokens = await authAPI.register(email, password, name)
+      await authAPI.register(email, password, name)
+      const tokens = await authAPI.login(email, password)
       localStorage.setItem("access_token", tokens.accessToken)
       localStorage.setItem("refresh_token", tokens.refreshToken)
 
       const profile = await authAPI.getProfile(tokens.accessToken)
+      
       setUser(profile)
     } finally {
       setLoading(false)

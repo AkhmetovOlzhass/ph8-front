@@ -36,7 +36,7 @@ export default function LearnPage() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-gray-300">
               <User className="h-4 w-4" />
-              <span>Welcome, {user.name}</span>
+              <span>Welcome, {user.displayName}</span>
             </div>
 
             {user.role === "ADMIN" && (
